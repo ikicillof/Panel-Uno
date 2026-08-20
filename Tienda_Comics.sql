@@ -1,5 +1,6 @@
 CREATE DATABASE Tienda_Comics;
 
+use Tienda_Comics;
 CREATE TABLE Generos(
 	Id_Genero int primary key auto_increment,
 	Nombre varchar(30)
@@ -34,6 +35,7 @@ CREATE TABLE Ciudades(
 	Id_Ciudad int primary key auto_increment,
     Nombre varchar(30),
     Anio_fundacion year,
+    Id_Pais int,
     foreign key(Id_Pais) references Paises(Id_Pais)
 );
 
@@ -124,20 +126,6 @@ CREATE TABLE Carritos(
     foreign key(Id_Venta) references Ventas(Id_Venta)
 );
 
-INSERT INTO Editoriales
-(Nombre, Correo, Id_Pais)
-VALUES
-('DC Comics', 'contacto@dc.com', 2),
-('Marvel Comics', 'contacto@marvel.com', 2),
-('Image Comics', 'contacto@image.com', 2),
-('Dark Horse', 'contacto@darkhorse.com', 2),
-('Panini Comics', 'contacto@panini.com', 7),
-('ECC Ediciones', 'contacto@ecc.com', 8),
-('Kodansha', 'contacto@kodansha.com', 5),
-('Titan Comics', 'contacto@titancomics.com', 3),
-('Norma Editorial', 'contacto@norma.com', 8),
-('IDW Publishing', 'contacto@idw.com', 2);
-
 INSERT INTO Generos (Nombre) VALUES
 ('Acción'),
 ('Aventura'),
@@ -150,7 +138,9 @@ INSERT INTO Generos (Nombre) VALUES
 ('Misterio'),
 ('Thriller');
 
-INSERT INTO Franquicia (Nombre, Anio_fundacion) VALUES
+
+
+INSERT INTO Franquicias (Nombre, Anio_fundacion) VALUES
 ('Batman', 1939),
 ('Spider-Man', 1962),
 ('Watchmen', 1986),
@@ -185,6 +175,20 @@ INSERT INTO Paises (Nombre, Anio_fundacion) VALUES
 ('España', 1479),
 ('Alemania', 1871),
 ('Brasil', 1822);
+
+INSERT INTO Editoriales
+(Nombre, Correo, Id_Pais)
+VALUES
+('DC Comics', 'contacto@dc.com', 2),
+('Marvel Comics', 'contacto@marvel.com', 2),
+('Image Comics', 'contacto@image.com', 2),
+('Dark Horse', 'contacto@darkhorse.com', 2),
+('Panini Comics', 'contacto@panini.com', 7),
+('ECC Ediciones', 'contacto@ecc.com', 8),
+('Kodansha', 'contacto@kodansha.com', 5),
+('Titan Comics', 'contacto@titancomics.com', 3),
+('Norma Editorial', 'contacto@norma.com', 8),
+('IDW Publishing', 'contacto@idw.com', 2);
 
 INSERT INTO Puestos (Nombre, Descripcion) VALUES
 ('Gerente', 'Administra la sucursal'),
@@ -247,6 +251,17 @@ INSERT INTO Proveedores(Nombre, Telefono, Correo, Id_Pais) VALUES
     ('Titan Comics', 1289012345, 'titan@proveedor.com', 3),
     ('Norma Editorial', 1290123456, 'norma@proveedor.com', 8),
     ('Milky Way Ediciones', 1201234567, 'milkyway@proveedor.com', 8);
+
+INSERT INTO Autores (Nombre, Fecha_nacimiento, Id_Pais) VALUES
+('Frank Miller', '1957-01-27', 2),
+('Jeph Loeb', '1958-09-16', 2),
+('Alan Moore', '1953-11-18', 3),
+('Mark Millar', '1969-12-24', 3),
+('Chris Claremont', '1950-11-25', 2),
+('Robert Kirkman', '1978-11-30', 2);
+
+
+
 INSERT INTO Comics(Nombre, Sinopsis, Anio_lanzamiento, Destacado, Precio, Id_Editorial, Id_Franquicia, Id_Autor, Id_Genero) VALUES
     ('Batman: Año Uno',
      'El origen de Batman y Gordon.',
@@ -317,3 +332,9 @@ INSERT INTO Comics(Nombre, Sinopsis, Anio_lanzamiento, Destacado, Precio, Id_Edi
      FALSE,
      15.99,
      4, 6, 6, 2);
+     
+     USE Tienda_Comics;
+
+ALTER TABLE Comics
+  ADD COLUMN Stock int NOT NULL DEFAULT 0,
+  ADD COLUMN Cover varchar(300) DEFAULT '';
