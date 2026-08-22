@@ -48,9 +48,14 @@ export default function Navbar() {
           const result = await api.processPayment(formData as unknown as Record<string, unknown>, items);
           if (result.status === "approved") {
             confirmPaidOrder(items);
-            setShowPayment(false);
-            setReceipt({ items: receiptItems, total: cartTotal, paymentId: result.id });
             resolve();
+            // Dejamos que el Payment Brick termine de mostrar su propia
+            // animación de "pago aprobado" antes de reemplazarlo por
+            // nuestro comprobante.
+            setTimeout(() => {
+              setShowPayment(false);
+              setReceipt({ items: receiptItems, total: cartTotal, paymentId: result.id });
+            }, 1500);
           } else {
             setPaymentMessage(
               result.status === "in_process"
