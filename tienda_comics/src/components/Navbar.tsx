@@ -277,7 +277,7 @@ export default function Navbar() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowPayment(false)} />
           <div
-            className="relative w-full max-w-lg bg-[#f5f0e8] max-h-[90vh] overflow-y-auto"
+            className="relative w-full max-w-lg bg-[#f5f0e8] h-[75vh] overflow-y-auto"
             style={{ border: "4px solid #0d0b0e" }}
           >
             <div className="bg-[#0d0b0e] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
