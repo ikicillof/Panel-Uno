@@ -1,28 +1,67 @@
 import { Link, useLocation } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
 import { useState } from "react";
+import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import type { IPaymentFormData } from "@mercadopago/sdk-react/esm/bricks/payment/type";
+import { api } from "../services/api";
 
 export default function Navbar() {
-  const { cart, cartCount, cartTotal, removeFromCart, checkout } = useStore();
+  const { cart, cartCount, cartTotal, removeFromCart, confirmPaidOrder } = useStore();
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [purchased, setPurchased] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
 
-  const handleCheckout = async () => {
-    setPurchasing(true);
-    try {
-      await checkout();
-      setPurchased(true);
-      setTimeout(() => {
-        setPurchased(false);
-        setCartOpen(false);
-      }, 2000);
-    } catch {
-      alert("Error al procesar la compra. Revisá el stock disponible.");
-    } finally {
-      setPurchasing(false);
+  const handleOpenPayment = async () => {
+    setPaymentMessage(null);
+    if (!publicKey) {
+      try {
+        const { publicKey: key } = await api.getMpPublicKey();
+        initMercadoPago(key, { locale: "es-AR" });
+        setPublicKey(key);
+      } catch {
+        alert("No se pudo cargar Mercado Pago. Revisá la configuración del backend.");
+        return;
+      }
     }
+    setShowPayment(true);
+  };
+
+  const handleBrickSubmit = ({ formData }: IPaymentFormData) => {
+    return new Promise<void>((resolve, reject) => {
+      (async () => {
+        setPurchasing(true);
+        const items = cart.map((i) => ({ id: i.comic.id, quantity: i.quantity }));
+        try {
+          const result = await api.processPayment(formData as unknown as Record<string, unknown>, items);
+          if (result.status === "approved") {
+            confirmPaidOrder(items);
+            setPurchased(true);
+            setShowPayment(false);
+            setTimeout(() => {
+              setPurchased(false);
+              setCartOpen(false);
+            }, 2000);
+            resolve();
+          } else {
+            setPaymentMessage(
+              result.status === "in_process"
+                ? "Pago en revisión…"
+                : "Pago rechazado. Probá con otra tarjeta."
+            );
+            reject();
+          }
+        } catch (err) {
+          setPaymentMessage("Error al procesar el pago.");
+          reject(err);
+        } finally {
+          setPurchasing(false);
+        }
+      })();
+    });
   };
   const location = useLocation();
 
@@ -211,19 +250,43 @@ export default function Navbar() {
                     ${cartTotal.toLocaleString("es-AR")}
                   </span>
                 </div>
-                <button
-                  onClick={handleCheckout}
-                  disabled={purchasing || purchased}
-                  className={`w-full font-black py-3 text-lg uppercase tracking-widest transition-colors comic-border ${
-                    purchased
-                      ? "bg-[#0057d9] text-white cursor-default"
-                      : purchasing
-                      ? "bg-[#6b6672] text-white cursor-wait"
-                      : "bg-[#e8001c] text-white hover:bg-[#0d0b0e]"
-                  }`}
-                >
-                  {purchased ? "¡Compra realizada! ✓" : purchasing ? "Procesando..." : "Finalizar Compra"}
-                </button>
+
+                {paymentMessage && (
+                  <p className="text-sm font-bold text-[#e8001c] mb-3">{paymentMessage}</p>
+                )}
+
+                {!showPayment ? (
+                  <button
+                    onClick={handleOpenPayment}
+                    disabled={purchased}
+                    className={`w-full font-black py-3 text-lg uppercase tracking-widest transition-colors comic-border ${
+                      purchased
+                        ? "bg-[#0057d9] text-white cursor-default"
+                        : "bg-[#e8001c] text-white hover:bg-[#0d0b0e]"
+                    }`}
+                  >
+                    {purchased ? "¡Compra realizada! ✓" : "Finalizar Compra"}
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Payment
+                      key={cartTotal}
+                      initialization={{ amount: cartTotal }}
+                      customization={{ paymentMethods: { creditCard: "all", debitCard: "all" } }}
+                      onSubmit={handleBrickSubmit}
+                      onError={() => setPaymentMessage("Error al cargar el formulario de pago.")}
+                    />
+                    {purchasing && (
+                      <p className="text-sm font-bold text-[#6b6672]">Procesando pago…</p>
+                    )}
+                    <button
+                      onClick={() => setShowPayment(false)}
+                      className="text-sm font-bold text-[#6b6672] hover:text-[#e8001c] uppercase tracking-widest"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

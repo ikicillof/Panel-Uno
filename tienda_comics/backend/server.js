@@ -1,10 +1,16 @@
+require("dotenv").config();
+const crypto = require("crypto");
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
+const { MercadoPagoConfig, Payment } = require("mercadopago");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// ── Mercado Pago (sandbox) ─────────────────────────────────────────────────
+const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 
 // ── Configuración de conexión ──────────────────────────────────────────────
 // Cambiá estos valores por los de tu servidor MySQL local
@@ -118,14 +124,10 @@ app.delete("/api/comics/:id", async (req, res) => {
   }
 });
 
-// ── POST /api/checkout ────────────────────────────────────────────────────
-// Body: [{ id: number, quantity: number }, ...]
+// ── decrementStock ─────────────────────────────────────────────────────────
+// items: [{ id: number, quantity: number }, ...]
 // Descuenta el stock de cada cómic en una transacción.
-app.post("/api/checkout", async (req, res) => {
-  const items = req.body; // [{ id, quantity }]
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: "Carrito vacío" });
-  }
+async function decrementStock(items) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -143,12 +145,40 @@ app.post("/api/checkout", async (req, res) => {
       );
     }
     await conn.commit();
-    res.json({ ok: true });
   } catch (err) {
     await conn.rollback();
-    res.status(400).json({ error: err.message });
+    throw err;
   } finally {
     conn.release();
+  }
+}
+
+// ── GET /api/mp-public-key ─────────────────────────────────────────────────
+app.get("/api/mp-public-key", (req, res) => {
+  res.json({ publicKey: process.env.MP_PUBLIC_KEY });
+});
+
+// ── POST /api/process-payment ──────────────────────────────────────────────
+// Body: { formData: <datos del Payment Brick>, items: [{ id, quantity }, ...] }
+app.post("/api/process-payment", async (req, res) => {
+  const { formData, items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Carrito vacío" });
+  }
+  try {
+    const payment = new Payment(mpClient);
+    const result = await payment.create({
+      body: formData,
+      requestOptions: { idempotencyKey: crypto.randomUUID() },
+    });
+
+    if (result.status === "approved") {
+      await decrementStock(items);
+    }
+
+    res.json({ status: result.status, status_detail: result.status_detail, id: result.id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
