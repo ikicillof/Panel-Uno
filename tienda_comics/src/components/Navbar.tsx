@@ -255,40 +255,71 @@ export default function Navbar() {
                   <p className="text-sm font-bold text-[#e8001c] mb-3">{paymentMessage}</p>
                 )}
 
-                {!showPayment ? (
-                  <button
-                    onClick={handleOpenPayment}
-                    disabled={purchased}
-                    className={`w-full font-black py-3 text-lg uppercase tracking-widest transition-colors comic-border ${
-                      purchased
-                        ? "bg-[#0057d9] text-white cursor-default"
-                        : "bg-[#e8001c] text-white hover:bg-[#0d0b0e]"
-                    }`}
-                  >
-                    {purchased ? "¡Compra realizada! ✓" : "Finalizar Compra"}
-                  </button>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <Payment
-                      key={cartTotal}
-                      initialization={{ amount: cartTotal }}
-                      customization={{ paymentMethods: { creditCard: "all", debitCard: "all" } }}
-                      onSubmit={handleBrickSubmit}
-                      onError={() => setPaymentMessage("Error al cargar el formulario de pago.")}
-                    />
-                    {purchasing && (
-                      <p className="text-sm font-bold text-[#6b6672]">Procesando pago…</p>
-                    )}
-                    <button
-                      onClick={() => setShowPayment(false)}
-                      className="text-sm font-bold text-[#6b6672] hover:text-[#e8001c] uppercase tracking-widest"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                )}
+                <button
+                  onClick={handleOpenPayment}
+                  disabled={purchased}
+                  className={`w-full font-black py-3 text-lg uppercase tracking-widest transition-colors comic-border ${
+                    purchased
+                      ? "bg-[#0057d9] text-white cursor-default"
+                      : "bg-[#e8001c] text-white hover:bg-[#0d0b0e]"
+                  }`}
+                >
+                  {purchased ? "¡Compra realizada! ✓" : "Finalizar Compra"}
+                </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Dialog de pago (Mercado Pago Payment Brick) */}
+      {showPayment && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowPayment(false)} />
+          <div
+            className="relative w-full max-w-lg bg-[#f5f0e8] max-h-[90vh] overflow-y-auto"
+            style={{ border: "4px solid #0d0b0e" }}
+          >
+            <div className="bg-[#0d0b0e] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+              <h2
+                className="text-[#ffd600] text-2xl"
+                style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
+              >
+                PAGAR CON MERCADO PAGO
+              </h2>
+              <button
+                onClick={() => setShowPayment(false)}
+                className="text-white hover:text-[#ffd600] text-2xl font-black"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <span className="font-bold text-[#6b6672] uppercase tracking-widest text-sm">Total a pagar</span>
+                <span className="text-2xl font-black text-[#e8001c]">
+                  ${cartTotal.toLocaleString("es-AR")}
+                </span>
+              </div>
+
+              {paymentMessage && (
+                <p className="text-sm font-bold text-[#e8001c] mb-3">{paymentMessage}</p>
+              )}
+
+              <Payment
+                key={cartTotal}
+                initialization={{ amount: cartTotal }}
+                customization={{ paymentMethods: { creditCard: "all", debitCard: "all" } }}
+                onSubmit={handleBrickSubmit}
+                onError={() => setPaymentMessage("Error al cargar el formulario de pago.")}
+              />
+
+              {purchasing && (
+                <p className="text-sm font-bold text-[#6b6672] mt-2">Procesando pago…</p>
+              )}
+            </div>
           </div>
         </div>
       )}
