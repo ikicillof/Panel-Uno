@@ -29,6 +29,10 @@ async function buscarPortada(titulo) {
   const res = await fetch(url);
   const data = await res.json();
 
+  if (!res.ok) {
+    throw new Error(data?.error?.message || `HTTP ${res.status}`);
+  }
+
   const item = data.items?.[0];
   const thumb = item?.volumeInfo?.imageLinks?.thumbnail;
   // Google devuelve http y a veces zoom bajo; lo normalizamos a https
