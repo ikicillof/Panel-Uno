@@ -10,10 +10,14 @@ export default function Navbar() {
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [purchased, setPurchased] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<{
+    items: { title: string; quantity: number; price: number }[];
+    total: number;
+    paymentId?: number;
+  } | null>(null);
 
   const handleOpenPayment = async () => {
     setPaymentMessage(null);
@@ -35,16 +39,17 @@ export default function Navbar() {
       (async () => {
         setPurchasing(true);
         const items = cart.map((i) => ({ id: i.comic.id, quantity: i.quantity }));
+        const receiptItems = cart.map((i) => ({
+          title: i.comic.title,
+          quantity: i.quantity,
+          price: i.comic.price,
+        }));
         try {
           const result = await api.processPayment(formData as unknown as Record<string, unknown>, items);
           if (result.status === "approved") {
             confirmPaidOrder(items);
-            setPurchased(true);
             setShowPayment(false);
-            setTimeout(() => {
-              setPurchased(false);
-              setCartOpen(false);
-            }, 2000);
+            setReceipt({ items: receiptItems, total: cartTotal, paymentId: result.id });
             resolve();
           } else {
             setPaymentMessage(
@@ -257,14 +262,10 @@ export default function Navbar() {
 
                 <button
                   onClick={handleOpenPayment}
-                  disabled={purchased}
-                  className={`w-full font-black py-3 text-lg uppercase tracking-widest transition-colors comic-border ${
-                    purchased
-                      ? "bg-[#0057d9] text-white cursor-default"
-                      : "bg-[#e8001c] text-white hover:bg-[#0d0b0e]"
-                  }`}
+                  disabled={purchasing}
+                  className="w-full font-black py-3 text-lg uppercase tracking-widest transition-colors comic-border bg-[#e8001c] text-white hover:bg-[#0d0b0e] disabled:cursor-wait disabled:opacity-70"
                 >
-                  {purchased ? "¡Compra realizada! ✓" : "Finalizar Compra"}
+                  {purchasing ? "Procesando…" : "Finalizar Compra"}
                 </button>
               </div>
             )}
@@ -319,6 +320,70 @@ export default function Navbar() {
               {purchasing && (
                 <p className="text-sm font-bold text-[#6b6672] mt-2">Procesando pago…</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comprobante de compra */}
+      {receipt && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => {
+              setReceipt(null);
+              setCartOpen(false);
+            }}
+          />
+          <div className="relative w-full max-w-md bg-[#f5f0e8]" style={{ border: "4px solid #0d0b0e" }}>
+            <div className="bg-[#0057d9] px-6 py-4">
+              <h2
+                className="text-white text-2xl"
+                style={{ fontFamily: "var(--font-display)", letterSpacing: "0.08em" }}
+              >
+                ¡COMPRA REALIZADA! ✓
+              </h2>
+            </div>
+
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                {receipt.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-sm font-semibold">
+                    <span>
+                      {item.title} x{item.quantity}
+                    </span>
+                    <span>${(item.price * item.quantity).toLocaleString("es-AR")}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-between items-center border-t-4 border-[#0d0b0e] pt-3">
+                <span
+                  className="text-xl font-black"
+                  style={{ fontFamily: "var(--font-display)", letterSpacing: "0.05em" }}
+                >
+                  TOTAL
+                </span>
+                <span className="text-2xl font-black text-[#e8001c]">
+                  ${receipt.total.toLocaleString("es-AR")}
+                </span>
+              </div>
+
+              {receipt.paymentId && (
+                <p className="text-xs text-[#6b6672] font-semibold">
+                  N.º de operación Mercado Pago: {receipt.paymentId}
+                </p>
+              )}
+
+              <button
+                onClick={() => {
+                  setReceipt(null);
+                  setCartOpen(false);
+                }}
+                className="w-full font-black py-3 text-lg uppercase tracking-widest bg-[#0d0b0e] text-white hover:bg-[#e8001c] transition-colors comic-border"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>
