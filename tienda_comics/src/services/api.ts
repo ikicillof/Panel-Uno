@@ -27,8 +27,10 @@ export const api = {
   updateComic: (id: number, data: ComicPayload) => send<Comic>("PUT", `/comics/${id}`, data),
   deleteComic: (id: number)            => send<{ ok: boolean }>("DELETE", `/comics/${id}`),
 
-  checkout: (items: { id: number; quantity: number }[]) =>
-    send<{ ok: boolean }>("POST", "/checkout", items),
+  getMpPublicKey: () => get<{ publicKey: string }>("/mp-public-key"),
+
+  processPayment: (formData: Record<string, unknown>, items: { id: number; quantity: number }[]) =>
+    send<{ status: string; status_detail: string; id: number }>("POST", "/process-payment", { formData, items }),
 
   getGeneros:      () => get<SelectOption[]>("/generos"),
   getEditoriales:  () => get<SelectOption[]>("/editoriales"),

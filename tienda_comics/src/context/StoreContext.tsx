@@ -13,7 +13,7 @@ type StoreContextType = {
   removeFromCart: (id: number) => void;
   cartTotal: number;
   cartCount: number;
-  checkout: () => Promise<void>;
+  confirmPaidOrder: (items: { id: number; quantity: number }[]) => void;
   addComic: (payload: ComicPayload) => Promise<void>;
   updateComic: (id: number, payload: ComicPayload) => Promise<void>;
   deleteComic: (id: number) => Promise<void>;
@@ -149,15 +149,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const checkout = async () => {
-    const items = cart.map((i) => ({ id: i.comic.id, quantity: i.quantity }));
-    if (apiOnline) {
-      await api.checkout(items);
-    }
-    // Descontar stock localmente siempre (refleja el estado real)
+  // Se llama después de que Mercado Pago confirmó el pago como aprobado
+  // (el descuento de stock real ya lo hizo el backend en /api/process-payment).
+  const confirmPaidOrder = (items: { id: number; quantity: number }[]) => {
     setComics((prev) =>
       prev.map((c) => {
-        const item = cart.find((i) => i.comic.id === c.id);
+        const item = items.find((i) => i.id === c.id);
         if (!item) return c;
         return { ...c, stock: Math.max(0, c.stock - item.quantity) };
       })
@@ -174,7 +171,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     <StoreContext.Provider
       value={{
         comics, loading, apiOnline,
-        cart, addToCart, removeFromCart, cartTotal, cartCount, checkout,
+        cart, addToCart, removeFromCart, cartTotal, cartCount, confirmPaidOrder,
         addComic, updateComic, deleteComic,
         generos, editoriales, franquicias, autores,
       }}
