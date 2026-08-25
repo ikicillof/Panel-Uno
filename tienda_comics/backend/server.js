@@ -3,6 +3,8 @@ const crypto = require("crypto");
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
+const nodemailer = require("nodemailer");
+const bcrypt = require("bcryptjs");
 const { MercadoPagoConfig, Payment } = require("mercadopago");
 
 const app = express();
@@ -11,6 +13,274 @@ app.use(express.json());
 
 // ── Mercado Pago (sandbox) ─────────────────────────────────────────────────
 const mpClient = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+
+// ── Login por token enviado a gmail ────────────────────────────────────────
+const ADMIN_EMAIL = "ikicillof@gmail.com";
+const TOKEN_TTL_MS = 10 * 60 * 1000; // el código vence a los 10 minutos
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // la sesión dura 7 días
+
+const pendingTokens = new Map(); // email -> { code, expiresAt }
+const resetTokens = new Map();   // email -> { code, expiresAt } (código de "olvidé mi contraseña", separado del de login)
+const sessions = new Map();      // sessionToken -> { userId, email, isAdmin, expiresAt }
+
+const mailTransport = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
+
+function isValidEmail(email) {
+  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function generateCode() {
+  return String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+}
+
+function cleanupExpired(map) {
+  const now = Date.now();
+  for (const [key, value] of map) {
+    if (value.expiresAt < now) map.delete(key);
+  }
+}
+
+function getSessionFromReq(req) {
+  cleanupExpired(sessions);
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) return null;
+  return sessions.get(token) || null;
+}
+
+function requireAdmin(req, res, next) {
+  const session = getSessionFromReq(req);
+  if (!session) return res.status(401).json({ error: "No autenticado" });
+  if (!session.isAdmin) return res.status(403).json({ error: "No autorizado" });
+  req.session = session;
+  next();
+}
+
+function requireSession(req, res, next) {
+  const session = getSessionFromReq(req);
+  if (!session) return res.status(401).json({ error: "No autenticado" });
+  req.session = session;
+  next();
+}
+
+// Genera y envía el código de 6 dígitos (segundo factor, tras validar contraseña).
+async function sendLoginCode(email) {
+  cleanupExpired(pendingTokens);
+  const code = generateCode();
+  pendingTokens.set(email, { code, expiresAt: Date.now() + TOKEN_TTL_MS });
+  await mailTransport.sendMail({
+    from: `"Panel Uno" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: "Tu código de acceso — Panel Uno",
+    text: `Tu código de acceso es: ${code}\n\nVence en 10 minutos. Si no lo pediste vos, ignorá este mail.`,
+    html: `<p>Tu código de acceso a <b>Panel Uno</b> es:</p><h1 style="letter-spacing:0.2em">${code}</h1><p>Vence en 10 minutos. Si no lo pediste vos, ignorá este mail.</p>`,
+  });
+}
+
+// ── POST /api/auth/register ────────────────────────────────────────────────
+// Crea la cuenta (gmail + contraseña hasheada) y manda el código de 6 dígitos.
+app.post("/api/auth/register", async (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+  if (!isValidEmail(email)) return res.status(400).json({ error: "Email inválido" });
+  if (password.length < 6) return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
+
+  try {
+    const existing = await query("SELECT Id_Usuario FROM Usuarios WHERE Gmail = ?", [email]);
+    if (existing.length) {
+      return res.status(409).json({ error: "Ya existe una cuenta vinculada a ese gmail. Iniciá sesión en cambio." });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    await pool.execute("INSERT INTO Usuarios (Gmail, Password_Hash) VALUES (?, ?)", [email, hash]);
+    await sendLoginCode(email);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "No se pudo completar el registro. Intentá de nuevo." });
+  }
+});
+
+// ── POST /api/auth/login ───────────────────────────────────────────────────
+// Valida gmail + contraseña y manda el código de 6 dígitos.
+app.post("/api/auth/login", async (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+  if (!isValidEmail(email)) return res.status(400).json({ error: "Email inválido" });
+
+  try {
+    const rows = await query("SELECT Password_Hash FROM Usuarios WHERE Gmail = ?", [email]);
+    if (!rows.length || !(await bcrypt.compare(password, rows[0].Password_Hash))) {
+      return res.status(401).json({ error: "Gmail o contraseña incorrectos" });
+    }
+    await sendLoginCode(email);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "No se pudo iniciar sesión. Intentá de nuevo." });
+  }
+});
+
+// ── POST /api/auth/verify ──────────────────────────────────────────────────
+// Confirma el código de 6 dígitos y recién ahí abre la sesión.
+app.post("/api/auth/verify", async (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const code = String(req.body.code || "").trim();
+
+  cleanupExpired(pendingTokens);
+  const pending = pendingTokens.get(email);
+  if (!pending || pending.code !== code) {
+    return res.status(400).json({ error: "Código incorrecto o vencido" });
+  }
+  pendingTokens.delete(email);
+
+  try {
+    const rows = await query("SELECT Id_Usuario FROM Usuarios WHERE Gmail = ?", [email]);
+    if (!rows.length) return res.status(400).json({ error: "No existe una cuenta con ese gmail" });
+
+    const token = crypto.randomUUID();
+    const isAdmin = email === ADMIN_EMAIL;
+    const expiresAt = Date.now() + SESSION_TTL_MS;
+    sessions.set(token, { userId: rows[0].Id_Usuario, email, isAdmin, expiresAt });
+
+    res.json({ token, email, isAdmin, expiresAt });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cierra todas las sesiones activas de un usuario (se usa al resetear la contraseña).
+function revokeSessionsForUser(userId) {
+  for (const [token, session] of sessions) {
+    if (session.userId === userId) sessions.delete(token);
+  }
+}
+
+// ── POST /api/auth/forgot-password ─────────────────────────────────────────
+// Si el gmail tiene cuenta, manda un código de 6 dígitos para resetear la contraseña.
+// Responde { ok: true } siempre, exista o no la cuenta, para no filtrar qué mails están registrados.
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  if (!isValidEmail(email)) return res.status(400).json({ error: "Email inválido" });
+
+  try {
+    const rows = await query("SELECT Id_Usuario FROM Usuarios WHERE Gmail = ?", [email]);
+    if (rows.length) {
+      cleanupExpired(resetTokens);
+      const code = generateCode();
+      resetTokens.set(email, { code, expiresAt: Date.now() + TOKEN_TTL_MS });
+      await mailTransport.sendMail({
+        from: `"Panel Uno" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: "Restablecer tu contraseña — Panel Uno",
+        text: `Tu código para restablecer la contraseña es: ${code}\n\nVence en 10 minutos. Si no lo pediste vos, ignorá este mail.`,
+        html: `<p>Tu código para restablecer la contraseña en <b>Panel Uno</b> es:</p><h1 style="letter-spacing:0.2em">${code}</h1><p>Vence en 10 minutos. Si no lo pediste vos, ignorá este mail.</p>`,
+      });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "No se pudo enviar el mail. Intentá de nuevo." });
+  }
+});
+
+// ── POST /api/auth/reset-password ──────────────────────────────────────────
+// Confirma el código de "olvidé mi contraseña" y guarda la nueva contraseña.
+app.post("/api/auth/reset-password", async (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const code = String(req.body.code || "").trim();
+  const newPassword = String(req.body.newPassword || "");
+
+  if (newPassword.length < 6) return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres" });
+
+  cleanupExpired(resetTokens);
+  const pending = resetTokens.get(email);
+  if (!pending || pending.code !== code) {
+    return res.status(400).json({ error: "Código incorrecto o vencido" });
+  }
+  resetTokens.delete(email);
+
+  try {
+    const rows = await query("SELECT Id_Usuario FROM Usuarios WHERE Gmail = ?", [email]);
+    if (!rows.length) return res.status(400).json({ error: "No existe una cuenta con ese gmail" });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.execute("UPDATE Usuarios SET Password_Hash = ? WHERE Id_Usuario = ?", [hash, rows[0].Id_Usuario]);
+    revokeSessionsForUser(rows[0].Id_Usuario);
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/auth/session ──────────────────────────────────────────────────
+app.get("/api/auth/session", (req, res) => {
+  const session = getSessionFromReq(req);
+  if (!session) return res.status(401).json({ error: "Sesión inválida" });
+  res.json({ email: session.email, isAdmin: session.isAdmin });
+});
+
+// ── GET /api/cart (requiere sesión) ────────────────────────────────────────
+app.get("/api/cart", requireSession, async (req, res) => {
+  try {
+    const rows = await query(
+      "SELECT Id_Comic AS comicId, Cantidad AS quantity FROM Carrito_Items WHERE Id_Usuario = ?",
+      [req.session.userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/cart/item (requiere sesión) ───────────────────────────────────
+// Upsert de la cantidad de un cómic en el carrito del usuario logueado.
+app.put("/api/cart/item", requireSession, async (req, res) => {
+  const comicId = Number(req.body.comicId);
+  const quantity = Number(req.body.quantity);
+  if (!Number.isFinite(comicId) || !Number.isFinite(quantity)) {
+    return res.status(400).json({ error: "Datos inválidos" });
+  }
+  try {
+    if (quantity <= 0) {
+      await pool.execute("DELETE FROM Carrito_Items WHERE Id_Usuario = ? AND Id_Comic = ?", [req.session.userId, comicId]);
+    } else {
+      await pool.execute(
+        `INSERT INTO Carrito_Items (Id_Usuario, Id_Comic, Cantidad)
+         VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE Cantidad = VALUES(Cantidad)`,
+        [req.session.userId, comicId, quantity]
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/cart/item/:comicId (requiere sesión) ───────────────────────
+app.delete("/api/cart/item/:comicId", requireSession, async (req, res) => {
+  try {
+    await pool.execute("DELETE FROM Carrito_Items WHERE Id_Usuario = ? AND Id_Comic = ?", [req.session.userId, req.params.comicId]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/cart (requiere sesión) ─────────────────────────────────────
+// Vacía el carrito guardado (se usa tras confirmar una compra).
+app.delete("/api/cart", requireSession, async (req, res) => {
+  try {
+    await pool.execute("DELETE FROM Carrito_Items WHERE Id_Usuario = ?", [req.session.userId]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── Configuración de conexión ──────────────────────────────────────────────
 // Cambiá estos valores por los de tu servidor MySQL local
@@ -77,8 +347,8 @@ app.get("/api/comics/:id", async (req, res) => {
   }
 });
 
-// ── POST /api/comics ───────────────────────────────────────────────────────
-app.post("/api/comics", async (req, res) => {
+// ── POST /api/comics (requiere admin) ──────────────────────────────────────
+app.post("/api/comics", requireAdmin, async (req, res) => {
   try {
     const { title, synopsis, year, featured, price, stock, cover, publisherId, franchiseId, authorId, genreId } = req.body;
     const [result] = await pool.execute(
@@ -94,8 +364,8 @@ app.post("/api/comics", async (req, res) => {
   }
 });
 
-// ── PUT /api/comics/:id ────────────────────────────────────────────────────
-app.put("/api/comics/:id", async (req, res) => {
+// ── PUT /api/comics/:id (requiere admin) ───────────────────────────────────
+app.put("/api/comics/:id", requireAdmin, async (req, res) => {
   try {
     const { title, synopsis, year, featured, price, stock, cover, publisherId, franchiseId, authorId, genreId } = req.body;
     await pool.execute(
@@ -114,8 +384,8 @@ app.put("/api/comics/:id", async (req, res) => {
   }
 });
 
-// ── DELETE /api/comics/:id ─────────────────────────────────────────────────
-app.delete("/api/comics/:id", async (req, res) => {
+// ── DELETE /api/comics/:id (requiere admin) ────────────────────────────────
+app.delete("/api/comics/:id", requireAdmin, async (req, res) => {
   try {
     await pool.execute("DELETE FROM Comics WHERE Id_Comic = ?", [req.params.id]);
     res.json({ ok: true });
