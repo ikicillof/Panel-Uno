@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { INITIAL_COMICS, type Comic } from "../data/comics";
 import { api, type ComicPayload, type SelectOption } from "../services/api";
+import { useAuth } from "./AuthContext";
 
 type CartItem = { comic: Comic; quantity: number };
 
@@ -27,6 +28,7 @@ type StoreContextType = {
 const StoreContext = createContext<StoreContextType | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { auth } = useAuth();
   const [comics, setComics] = useState<Comic[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiOnline, setApiOnline] = useState(false);
@@ -52,6 +54,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setFranquicias(fr);
         setAutores(au);
         setApiOnline(true);
+
+        // Restaurar el carrito guardado del usuario logueado.
+        if (auth?.token) {
+          try {
+            const rows = await api.getCart(auth.token);
+            const restored: CartItem[] = rows
+              .map((row) => {
+                const comic = comicsData.find((c) => c.id === row.comicId);
+                return comic ? { comic, quantity: row.quantity } : null;
+              })
+              .filter((item): item is CartItem => item !== null);
+            setCart(restored);
+          } catch {
+            // si falla la restauración, arrancamos con el carrito vacío
+          }
+        }
       } catch {
         // API no disponible → usar datos mock locales
         setComics(INITIAL_COMICS);
@@ -61,15 +79,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     }
     load();
-  }, []);
+  }, [auth?.token]);
 
   const addToCart = (comic: Comic) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.comic.id === comic.id);
+      const quantity = existing ? existing.quantity + 1 : 1;
+      if (apiOnline && auth?.token) {
+        api.setCartItem(comic.id, quantity, auth.token).catch(() => {});
+      }
       if (existing) {
-        return prev.map((i) =>
-          i.comic.id === comic.id ? { ...i, quantity: i.quantity + 1 } : i
-        );
+        return prev.map((i) => (i.comic.id === comic.id ? { ...i, quantity } : i));
       }
       return [...prev, { comic, quantity: 1 }];
     });
@@ -77,6 +97,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = (id: number) => {
     setCart((prev) => prev.filter((i) => i.comic.id !== id));
+    if (apiOnline && auth?.token) {
+      api.removeCartItem(id, auth.token).catch(() => {});
+    }
   };
 
   const cartTotal = cart.reduce((sum, i) => sum + i.comic.price * i.quantity, 0);
@@ -84,7 +107,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const addComic = async (payload: ComicPayload) => {
     if (apiOnline) {
-      const newComic = await api.createComic(payload);
+      if (!auth?.token) throw new Error("No autenticado");
+      const newComic = await api.createComic(payload, auth.token);
       setComics((prev) => [...prev, newComic]);
     } else {
       // fallback local
@@ -117,7 +141,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateComic = async (id: number, payload: ComicPayload) => {
     if (apiOnline) {
-      const updated = await api.updateComic(id, payload);
+      if (!auth?.token) throw new Error("No autenticado");
+      const updated = await api.updateComic(id, payload, auth.token);
       setComics((prev) => prev.map((c) => (c.id === id ? updated : c)));
     } else {
       const option = (list: SelectOption[], pid: number) =>
@@ -160,10 +185,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
     );
     setCart([]);
+    if (apiOnline && auth?.token) {
+      api.clearServerCart(auth.token).catch(() => {});
+    }
   };
 
   const deleteComic = async (id: number) => {
-    if (apiOnline) await api.deleteComic(id);
+    if (apiOnline) {
+      if (!auth?.token) throw new Error("No autenticado");
+      await api.deleteComic(id, auth.token);
+    }
     setComics((prev) => prev.filter((c) => c.id !== id));
   };
 

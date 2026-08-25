@@ -1,9 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useStore } from "../context/StoreContext";
+import { useAuth } from "../context/AuthContext";
 import type { ComicPayload } from "../services/api";
 import type { Comic } from "../data/comics";
-
-const ADMIN_PASSWORD = "260110";
 
 const BLANK: ComicPayload = {
   title: "",
@@ -20,6 +19,7 @@ const BLANK: ComicPayload = {
 };
 
 export default function Admin() {
+  const { auth } = useAuth();
   const { comics, loading, apiOnline, addComic, updateComic, deleteComic, generos, editoriales, franquicias, autores } = useStore();
   const [mode, setMode] = useState<"list" | "add" | "edit">("list");
   const [editId, setEditId] = useState<number | null>(null);
@@ -28,21 +28,6 @@ export default function Admin() {
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem("adminUnlocked") === "true");
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState(false);
-
-  const handleUnlock = (e: FormEvent) => {
-    e.preventDefault();
-    if (passwordInput === ADMIN_PASSWORD) {
-      sessionStorage.setItem("adminUnlocked", "true");
-      setUnlocked(true);
-      setPasswordError(false);
-    } else {
-      setPasswordError(true);
-      setPasswordInput("");
-    }
-  };
 
   const filtered = comics.filter(
     (c) =>
@@ -135,48 +120,23 @@ export default function Admin() {
     </div>
   );
 
-  if (!unlocked) {
+  if (!auth?.isAdmin) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
-        <form
-          onSubmit={handleUnlock}
-          className="bg-white p-8 max-w-sm w-full flex flex-col gap-4"
-          style={{ border: "4px solid #0d0b0e", boxShadow: "8px 8px 0 #ffd600" }}
+        <div
+          className="bg-white p-8 max-w-sm w-full flex flex-col gap-3 text-center"
+          style={{ border: "4px solid #0d0b0e", boxShadow: "8px 8px 0 #e8001c" }}
         >
-          <div>
-            <p className="text-[#e8001c] text-xs uppercase tracking-widest font-black mb-1" style={{ fontFamily: "var(--font-mono)" }}>
-              Acceso restringido
-            </p>
-            <h1 className="text-[#0d0b0e] leading-none" style={{ fontFamily: "var(--font-display)", fontSize: "2.5rem", letterSpacing: "0.04em" }}>
-              PANEL DE ADMIN
-            </h1>
-          </div>
-
-          <input
-            type="password"
-            autoFocus
-            placeholder="Contraseña"
-            value={passwordInput}
-            onChange={(e) => {
-              setPasswordInput(e.target.value);
-              setPasswordError(false);
-            }}
-            className="bg-white text-[#0d0b0e] px-3 py-2 font-semibold outline-none focus:ring-2 focus:ring-[#ffd600]"
-            style={{ border: "2px solid #0d0b0e", fontFamily: "var(--font-body)" }}
-          />
-
-          {passwordError && (
-            <p className="text-sm font-bold text-[#e8001c]">Contraseña incorrecta.</p>
-          )}
-
-          <button
-            type="submit"
-            className="bg-[#e8001c] text-white font-black py-3 uppercase tracking-widest hover:bg-[#0d0b0e] transition-colors comic-border"
-            style={{ fontFamily: "var(--font-mono)" }}
-          >
-            Entrar
-          </button>
-        </form>
+          <p className="text-[#e8001c] text-xs uppercase tracking-widest font-black" style={{ fontFamily: "var(--font-mono)" }}>
+            Acceso restringido
+          </p>
+          <h1 className="text-[#0d0b0e] leading-none" style={{ fontFamily: "var(--font-display)", fontSize: "2.5rem", letterSpacing: "0.04em" }}>
+            SOLO ADMIN
+          </h1>
+          <p className="text-sm font-semibold text-[#6b6672]">
+            Esta sección es exclusiva para la cuenta administradora. Estás logueado como <span className="text-[#0d0b0e]">{auth?.email}</span>.
+          </p>
+        </div>
       </div>
     );
   }

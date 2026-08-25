@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useStore } from "../context/StoreContext";
+import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
 import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
 import type { IPaymentFormData } from "@mercadopago/sdk-react/esm/bricks/payment/type";
@@ -7,6 +8,7 @@ import { api } from "../services/api";
 
 export default function Navbar() {
   const { cart, cartCount, cartTotal, removeFromCart, confirmPaidOrder } = useStore();
+  const { auth, logout } = useAuth();
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
@@ -78,7 +80,7 @@ export default function Navbar() {
   const navLinks = [
     { to: "/", label: "Inicio" },
     { to: "/tienda", label: "Tienda" },
-    { to: "/admin", label: "Admin" },
+    ...(auth?.isAdmin ? [{ to: "/admin", label: "Admin" }] : []),
   ];
 
   const closeMenu = () => setMenuOpen(false);
@@ -123,6 +125,20 @@ export default function Navbar() {
 
           {/* Right side: cart + hamburger */}
           <div className="flex items-center gap-2">
+            {/* Usuario logueado + salir — desktop */}
+            <div className="hidden md:flex items-center gap-2 mr-1">
+              <span className="text-xs text-white/50 font-bold max-w-[10rem] truncate" style={{ fontFamily: "var(--font-mono)" }} title={auth?.email}>
+                {auth?.email}
+              </span>
+              <button
+                onClick={logout}
+                className="text-xs font-black uppercase tracking-widest text-white/70 hover:text-[#ffd600] transition-colors"
+                style={{ fontFamily: "var(--font-mono)" }}
+              >
+                Salir
+              </button>
+            </div>
+
             {/* Cart — always visible */}
             <button
               onClick={() => setCartOpen(true)}
@@ -177,6 +193,16 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <button
+              onClick={() => {
+                closeMenu();
+                logout();
+              }}
+              className="w-full text-left flex items-center px-6 py-4 font-black text-sm tracking-widest uppercase text-[#f5f0e8] hover:bg-white/10 transition-colors"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
+              Salir ({auth?.email})
+            </button>
           </div>
         )}
       </nav>
