@@ -1,0 +1,3 @@
+# La app vive en tienda_comics/; Netlify toma el resto de la configuración de tienda_comics/netlify.toml.
+[build]
+  base = "tienda_comics"

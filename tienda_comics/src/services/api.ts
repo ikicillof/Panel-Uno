@@ -1,6 +1,6 @@
 import type { Comic } from "../data/comics";
 
-const BASE = "http://localhost:3001/api";
+const BASE = "/api";
 
 export type SelectOption = { id: number; name: string };
 
