@@ -123,7 +123,10 @@ async function requireSession(req, res, next) {
 }
 
 // Genera y envía el código de 6 dígitos (segundo factor, tras validar contraseña).
+const MAIL_NOT_CONFIGURED = "El envío de mails no está configurado en el servidor (faltan GMAIL_USER y GMAIL_APP_PASSWORD).";
+
 async function sendLoginCode(email) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) throw new Error(MAIL_NOT_CONFIGURED);
   const code = await saveCode(email, "login");
   await mailTransport.sendMail({
     from: `"Panel Uno" <${process.env.GMAIL_USER}>`,
@@ -149,10 +152,18 @@ app.post("/api/auth/register", async (req, res) => {
     }
     const hash = await bcrypt.hash(password, 10);
     await query("INSERT INTO Usuarios (Gmail, Password_Hash) VALUES (?, ?)", [email, hash]);
-    await sendLoginCode(email);
+    try {
+      await sendLoginCode(email);
+    } catch (err) {
+      // Si no se pudo mandar el código, no dejamos la cuenta creada a medias.
+      await query("DELETE FROM Usuarios WHERE Gmail = ?", [email]);
+      throw err;
+    }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: "No se pudo completar el registro. Intentá de nuevo." });
+    console.error("register:", err);
+    const error = err.message === MAIL_NOT_CONFIGURED ? err.message : "No se pudo completar el registro. Intentá de nuevo.";
+    res.status(500).json({ error });
   }
 });
 
@@ -171,7 +182,9 @@ app.post("/api/auth/login", async (req, res) => {
     await sendLoginCode(email);
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: "No se pudo iniciar sesión. Intentá de nuevo." });
+    console.error("login:", err);
+    const error = err.message === MAIL_NOT_CONFIGURED ? err.message : "No se pudo iniciar sesión. Intentá de nuevo.";
+    res.status(500).json({ error });
   }
 });
 
