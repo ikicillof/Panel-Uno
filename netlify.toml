@@ -1,0 +1,21 @@
+[build]
+  base = "tienda_comics"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# React Router: cualquier otra ruta la resuelve el frontend.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

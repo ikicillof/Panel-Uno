@@ -1,9 +1,14 @@
 import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import fs from 'node:fs'
 import path from 'node:path'
 
-import siteConfiguration from './.figma/make/site.json'
+// .figma/ está en .gitignore, así que en Netlify (o en un clon limpio) este archivo no existe.
+const siteConfigurationPath = path.resolve(__dirname, '.figma/make/site.json')
+const siteConfiguration: FigmaSiteConfiguration = fs.existsSync(siteConfigurationPath)
+  ? JSON.parse(fs.readFileSync(siteConfigurationPath, 'utf8'))
+  : { title: 'Panel Uno', language: 'es' }
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -34,6 +39,8 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      // En local, /api va al backend Express (backend/server.js). En Netlify lo resuelve la función api.
+      proxy: { '/api': 'http://localhost:3001' },
     },
     preview: {
       host: '0.0.0.0',
