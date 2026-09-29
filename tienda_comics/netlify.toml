@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  # esbuild empaqueta backend/app.js con todas sus dependencias dentro de la función.
+  node_bundler = "esbuild"
+
+# React Router: cualquier otra ruta la resuelve el frontend.
+# /api/* lo atiende la función netlify/functions/api.mjs (tiene prioridad sobre esta regla).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

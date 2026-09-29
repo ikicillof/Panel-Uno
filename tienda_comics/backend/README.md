@@ -1,6 +1,7 @@
 ## Deploy en Netlify
 
-El repo ya está preparado (ver `netlify.toml` en la raíz):
+El repo ya está preparado: el `netlify.toml` de la raíz apunta a `tienda_comics`, y la
+configuración real está en `tienda_comics/netlify.toml`.
 
 - El frontend (Vite) se publica desde `tienda_comics/dist`.
 - La API de Express corre como Netlify Function (`tienda_comics/netlify/functions/api.mjs`) en `/api/*`.

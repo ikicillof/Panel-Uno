@@ -22,9 +22,21 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // la sesión dura 7 días
 // ── Base de datos (Netlify Database / Postgres) ────────────────────────────
 // En Netlify la conexión se configura sola (NETLIFY_DB_URL). En local podés usar
 // `netlify dev`, o poner DATABASE_URL en backend/.env apuntando a un Postgres propio.
-const { pool } = getDatabase(
-  process.env.NETLIFY_DB_URL ? {} : { connectionString: process.env.DATABASE_URL }
-);
+// Se conecta recién en el primer pedido: en Netlify la variable de conexión está
+// disponible en tiempo de ejecución, no necesariamente al cargar el módulo.
+let db;
+const pool = {
+  query: (...args) => getPool().query(...args),
+  connect: () => getPool().connect(),
+};
+function getPool() {
+  if (!db) {
+    db = process.env.DATABASE_URL
+      ? getDatabase({ connectionString: process.env.DATABASE_URL })
+      : getDatabase();
+  }
+  return db.pool;
+}
 
 // Los "?" se traducen a $1, $2… de Postgres para no tener que tocar cada consulta.
 function toPg(sql) {
