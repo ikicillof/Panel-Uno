@@ -64,9 +64,9 @@ export default function Carousel({ comics }) {
     g.visible = p > 0.01
     if (!g.visible) return
     const e = 1 - Math.pow(1 - Math.min(1, p), 3)
-    const fit = Math.min(1, S.vw / 3.4) * (0.35 + 0.65 * e)
+    const fit = Math.min(1, S.vw / 3.4) * (0.35 + 0.65 * e) * (1 - 0.3 * S.sink)
     g.scale.setScalar(fit)
-    g.position.set(0, S.ringY + 0.45 * Math.min(1, S.ring) + (1 - e) * -1.2, -R * fit)
+    g.position.set(0, S.ringY + 0.45 * Math.min(1, S.ring) + (1 - e) * -1.2 - S.sink * 2.6, -R * fit)
     g.rotation.x = 0.1
     // inercia
     if (!drag.down) { drag.off += drag.vel * dt; drag.vel *= Math.exp(-2.6 * dt) }

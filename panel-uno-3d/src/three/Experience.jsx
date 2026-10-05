@@ -26,6 +26,9 @@ export default function Experience({ tier, comics }) {
     S.p = reduce || first.current ? target : damp(S.p, target, 6, dt)
     first.current = false
     sample(S.p, undefined, S)
+    // salida del carrusel: la niebla sube rápido y los libros se hunden antes de que se vean fantasmales
+    const q = Math.min(1, Math.max(0, (S.p - 3.05) / 0.55)), sink = q * q * (3 - 2 * q)
+    S.fog = sink; S.sink = sink
     S.vw = viewport.width; S.vh = viewport.height; S.theme = store.get().theme
     camera.position.z = S.cam
     const inC = Math.abs(S.p - 3) < 0.9 && S.ring > 0.5
