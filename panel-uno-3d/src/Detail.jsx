@@ -7,13 +7,12 @@ import { sfx } from './audio'
 export default function Detail({ comics }) {
   const selected = useStore((s) => s.selected)
   const [shown, setShown] = useState(null) // id realmente visible (cambia a mitad del corte)
-  const [wipeKey, setWipeKey] = useState(0)
   const [toast, setToast] = useState('')
   const cover = useRef()
 
   useEffect(() => {
     if (selected === shown) return
-    setWipeKey((k) => k + 1)
+    store.set({ wipe: store.get().wipe + 1 })
     const t = setTimeout(() => setShown(selected), 380)
     return () => clearTimeout(t)
   }, [selected, shown])
@@ -35,11 +34,6 @@ export default function Detail({ comics }) {
 
   return (
     <>
-      {wipeKey > 0 && (
-        <div key={wipeKey} className="wipe go" aria-hidden="true">
-          <i style={{ '--i': 0 }} /><i style={{ '--i': 1 }} /><i style={{ '--i': 2 }} />
-        </div>
-      )}
       {c && (
         <div className="detail" role="dialog" aria-modal="true" aria-label={c.title} data-lenis-prevent onClick={(e) => { if (e.target === e.currentTarget) store.set({ selected: null }) }}>
           <div className="detail-box">

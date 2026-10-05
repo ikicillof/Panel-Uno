@@ -6,7 +6,9 @@ try {
   theme = localStorage.getItem('p1-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 } catch {}
 
-const state = { theme, sound: false, selected: null, focus: 0, cursor: '', inCarousel: false }
+let page = 'inicio'
+try { if (location.hash === '#catalogo') page = 'catalogo' } catch {}
+const state = { theme, sound: false, selected: null, focus: 0, cursor: '', inCarousel: false, page, wipe: 0 }
 const subs = new Set()
 
 export const store = {

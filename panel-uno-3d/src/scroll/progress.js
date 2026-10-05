@@ -12,6 +12,7 @@ export function measure() {
 
 export function readTarget() {
   if (!mids.length) measure()
+  if (!mids.length) return 0
   const c = window.scrollY + window.innerHeight / 2
   if (c <= mids[0]) return 0
   for (let j = 0; j < mids.length - 1; j++) {

@@ -9,7 +9,7 @@ export function useSmoothScroll() {
   const locked = useStore((s) => s.selected !== null)
   useEffect(() => {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    lenis = new Lenis({ lerp: 0.09, smoothWheel: true, anchors: true })
+    lenis = new Lenis({ lerp: 0.09, smoothWheel: true })
     let raf
     const tick = (t) => { lenis?.raf(t); raf = requestAnimationFrame(tick) }
     raf = requestAnimationFrame(tick)

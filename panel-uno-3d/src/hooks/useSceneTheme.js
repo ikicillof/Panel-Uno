@@ -13,7 +13,12 @@ const mix = (a, b, t) => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).
 export function useSceneTheme(enabled = true) {
   const theme = useStore((s) => s.theme)
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) {
+      const root = document.documentElement
+      root.style.setProperty('--bg', theme === 'dark' ? '#0d0b0e' : '#f5f0e8')
+      root.style.setProperty('--fg', theme === 'dark' ? '#f5f0e8' : '#0d0b0e')
+      return
+    }
     const P = PALETTES[theme], root = document.documentElement
     let cur = readTarget(), raf
     const car = document.querySelector('#carrusel .scene-inner')

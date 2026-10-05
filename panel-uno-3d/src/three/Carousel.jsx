@@ -18,7 +18,7 @@ export default function Carousel({ comics }) {
   const group = useRef()
   const slots = useRef([])
   const hover = useRef(-1)
-  const hv = useRef(new Float32Array(N))
+  const hv = useRef(new Float32Array(64))
 
   const mats = useMemo(() => {
     const edge = new THREE.MeshStandardMaterial({ map: A.edge, roughness: 0.95 })

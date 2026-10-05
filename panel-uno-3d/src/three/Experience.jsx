@@ -38,7 +38,7 @@ export default function Experience({ tier, comics }) {
   // Cuando el catálogo (HTML opaco) tapa el canvas, se deja de renderizar
   useEffect(() => {
     const check = () => {
-      const cat = document.getElementById('catalogo')
+      const cat = document.getElementById('destacados')
       const h = !!cat && cat.getBoundingClientRect().top <= 0
       if (h !== hidden.current) { hidden.current = h; setFrameloop(h ? 'never' : 'always') }
     }
