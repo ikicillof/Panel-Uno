@@ -21,7 +21,6 @@ export function useSceneTheme(enabled = true) {
     }
     const P = PALETTES[theme], root = document.documentElement
     let cur = readTarget(), raf
-    const car = document.querySelector('#carrusel .scene-inner')
     let last = performance.now()
     const tick = (now) => {
       const dt = Math.min(2, Math.max(0.001, (now - last) / 1000)); last = now
@@ -29,11 +28,6 @@ export function useSceneTheme(enabled = true) {
       const i = Math.min(P.bg.length - 2, Math.max(0, Math.floor(cur))), t = Math.min(1, Math.max(0, cur - i))
       root.style.setProperty('--bg', mix(rgb(P.bg[i]), rgb(P.bg[i + 1]), t))
       root.style.setProperty('--fg', mix(rgb(P.fg[i]), rgb(P.fg[i + 1]), t))
-      const ss = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x) }
-      const f3 = 1 - ss((cur - 3.0) / 0.35)
-      root.style.setProperty('--f3', f3.toFixed(3))
-      root.style.setProperty('--f4', ss((cur - 3.4) / 0.35).toFixed(3))
-      if (car) car.style.visibility = f3 < 0.01 ? 'hidden' : 'visible'
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)

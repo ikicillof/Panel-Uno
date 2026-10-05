@@ -1,8 +1,7 @@
 // Todo el contenido es HTML real. Cada <section data-scene> = una escena del guion (mismo orden que keyframes.js).
 import { useEffect, useRef, useState } from 'react'
 import { money } from './data/comics'
-import Card from './Card'
-import { goPage } from './navigation'
+import { scrollToId } from './navigation'
 import { store, useStore } from './store'
 import { sfx } from './audio'
 
@@ -37,7 +36,7 @@ function FocusCard({ comics }) {
   )
 }
 
-export default function Sections({ featured, total }) {
+export default function Sections({ comics }) {
   const open = (id) => { store.set({ selected: id }); sfx.whoosh() }
 
   return (
@@ -51,7 +50,7 @@ export default function Sections({ featured, total }) {
           <p className="bubble">La tienda de cómics que se lee con las manos.</p>
         </div>
         <div className="bottom-r rv" style={{ '--i': 4 }}>
-          <a className="cta" href="#catalogo" onClick={(e) => { e.preventDefault(); goPage('catalogo') }} data-cursor="link">Ver catálogo</a>
+          <a className="cta" href="#carrusel" onClick={(e) => { e.preventDefault(); scrollToId('carrusel') }} data-cursor="link">Ver carrusel</a>
           <span className="scroll-hint">Scrolleá</span>
         </div>
       </Scene>
@@ -85,37 +84,18 @@ export default function Sections({ featured, total }) {
           <h2 className="h-display rv" style={{ '--i': 1 }}>Elegí tu próximo cómic</h2>
         </div>
         <div className="bottom-note">
-          <FocusCard comics={featured} />
+          <FocusCard comics={comics} />
           <span className="chip rv" style={{ '--i': 3 }}>Arrastrá o scrolleá · tocá una portada</span>
         </div>
       </Scene>
 
-      {/* 4 · NIEBLA */}
-      <Scene id="niebla" cls="fog-scene short">
-        <div>
-          <h2 className="h-display rv">Mirá los destacados</h2>
-          <p className="lead rv" style={{ '--i': 1 }}>Los elegidos de la casa, y el catálogo completo a un toque.</p>
+      {/* 4 · CIERRE (el carrusel sigue girando detrás) */}
+      <Scene id="fin" cls="short">
+        <div className="fin-bar rv">
+          <span>PANEL UNO · Demo 3D</span>
+          <span>{comics.length} cómics · mismos datos y estética que la tienda original</span>
         </div>
       </Scene>
-
-      {/* 5 · DESTACADOS (solo los cómics con el flag "destacado" de la DB) */}
-      <section id="destacados" data-scene className="catalog">
-        <div className="shop">
-          <div className="cat-head">
-            <p className="kicker">Los elegidos de la casa</p>
-            <h2 className="h-display">DESTACADOS</h2>
-          </div>
-          <div className="grid">{featured.map((c) => <Card key={c.id} c={c} onOpen={open} />)}</div>
-          <div className="more">
-            <p className="count">{featured.length} de {total} cómics</p>
-            <a className="cta" href="#catalogo" onClick={(e) => { e.preventDefault(); goPage('catalogo') }} data-cursor="link">Ver catálogo completo →</a>
-          </div>
-          <footer className="foot">
-            <span>PANEL UNO · Demo 3D</span>
-            <span>Mismos datos y estética que la tienda original</span>
-          </footer>
-        </div>
-      </section>
     </main>
   )
 }

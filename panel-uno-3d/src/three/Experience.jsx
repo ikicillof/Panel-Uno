@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, SMAA } from '@react-three/postprocessing'
@@ -14,11 +14,10 @@ import Fog from './Fog'
 const reduce = typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export default function Experience({ tier, comics }) {
-  const { viewport, camera, setFrameloop } = useThree()
+  const { viewport, camera } = useThree()
   const theme = useStore((s) => s.theme)
   const high = tier === 'high'
   const first = useRef(true)
-  const hidden = useRef(false)
 
   // Cálculo único por frame (prioridad baja = corre antes que los demás useFrame)
   useFrame((state, dt) => {
@@ -26,26 +25,11 @@ export default function Experience({ tier, comics }) {
     S.p = reduce || first.current ? target : damp(S.p, target, 6, dt)
     first.current = false
     sample(S.p, undefined, S)
-    // salida del carrusel: la niebla sube rápido y los libros se hunden antes de que se vean fantasmales
-    const q = Math.min(1, Math.max(0, (S.p - 3.05) / 0.55)), sink = q * q * (3 - 2 * q)
-    S.fog = sink; S.sink = sink
     S.vw = viewport.width; S.vh = viewport.height; S.theme = store.get().theme
     camera.position.z = S.cam
     const inC = Math.abs(S.p - 3) < 0.9 && S.ring > 0.5
     if (store.get().inCarousel !== inC) store.set({ inCarousel: inC })
   }, -10)
-
-  // Cuando el catálogo (HTML opaco) tapa el canvas, se deja de renderizar
-  useEffect(() => {
-    const check = () => {
-      const cat = document.getElementById('destacados')
-      const h = !!cat && cat.getBoundingClientRect().top <= 0
-      if (h !== hidden.current) { hidden.current = h; setFrameloop(h ? 'never' : 'always') }
-    }
-    window.addEventListener('scroll', check, { passive: true })
-    check()
-    return () => window.removeEventListener('scroll', check)
-  }, [setFrameloop])
 
   const dark = theme === 'dark'
   return (
