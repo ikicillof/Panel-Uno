@@ -75,8 +75,9 @@ export default function HeroComic({ high }) {
     const g = root.current
     const vw = S.vw, openE = smoothstep(S.open)
     // Escala por ancho de pantalla: cerrado entra en vertical, abierto ocupa el doble
-    const fit = Math.min(1.12, THREE.MathUtils.lerp(vw / 2.1, vw / 3.7, openE))
-    g.position.set(S.x, S.y, 0)
+    const portrait = S.vh > S.vw * 1.1
+    const fit = Math.min(1.12, THREE.MathUtils.lerp(vw / (portrait ? 2.7 : 2.1), vw / 3.7, openE))
+    g.position.set(S.x, S.y + (portrait ? 0.35 + 0.6 * openE : 0), 0)
     g.scale.setScalar(S.scale * fit)
     g.visible = S.scale > 0.03
     if (!g.visible) return
