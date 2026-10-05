@@ -27,7 +27,7 @@ export function useSceneTheme(enabled = true) {
       const ss = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x) }
       const f3 = 1 - ss((cur - 3.0) / 0.35)
       root.style.setProperty('--f3', f3.toFixed(3))
-      root.style.setProperty('--f4', ss((cur - 3.55) / 0.35).toFixed(3))
+      root.style.setProperty('--f4', ss((cur - 3.4) / 0.35).toFixed(3))
       if (car) car.style.visibility = f3 < 0.01 ? 'hidden' : 'visible'
       raf = requestAnimationFrame(tick)
     }
