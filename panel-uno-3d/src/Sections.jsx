@@ -78,7 +78,7 @@ export default function Sections({ comics }) {
       </Scene>
 
       {/* 3 · CARRUSEL */}
-      <Scene id="carrusel" cls="tall">
+      <Scene id="carrusel" cls="last">
         <div className="top-head">
           <span className="eyebrow rv">Capítulo 03</span>
           <h2 className="h-display rv" style={{ '--i': 1 }}>Elegí tu próximo cómic</h2>
@@ -89,13 +89,6 @@ export default function Sections({ comics }) {
         </div>
       </Scene>
 
-      {/* 4 · CIERRE (el carrusel sigue girando detrás) */}
-      <Scene id="fin" cls="short">
-        <div className="fin-bar rv">
-          <span>PANEL UNO · Demo 3D</span>
-          <span>{comics.length} cómics · mismos datos y estética que la tienda original</span>
-        </div>
-      </Scene>
     </main>
   )
 }

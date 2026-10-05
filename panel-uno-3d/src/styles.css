@@ -58,6 +58,7 @@ img { display: block; }
 .scene { position: relative; z-index: 1; height: 150svh; pointer-events: none; }
 .scene.tall { height: 210svh; }
 .scene.short { height: 120svh; }
+.scene.last { height: 100svh; }
 .scene-inner { position: sticky; top: 0; height: 100svh; padding: calc(var(--nav-h) + 2svh) clamp(16px, 4vw, 56px) 5svh; }
 .scene a, .scene button, .scene .pe { pointer-events: auto; }
 .rv { opacity: 0; transform: translateY(28px) scale(.98); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); transition-delay: calc(var(--i, 0) * 90ms); }
