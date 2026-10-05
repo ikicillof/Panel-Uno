@@ -1,0 +1,27 @@
+{
+  "name": "panel-uno-3d",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:artifact": "ARTIFACT=1 vite build --outDir dist-artifact",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.0.0",
+    "@react-three/postprocessing": "^3.0.0",
+    "lenis": "^1.3.0",
+    "postprocessing": "^6.37.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.175.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.4.0",
+    "vite": "^6.3.0",
+    "vite-plugin-singlefile": "^2.0.0"
+  }
+}
