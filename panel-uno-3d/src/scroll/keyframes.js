@@ -4,8 +4,8 @@
 // ring/ringY/rr: carrusel (presencia, altura, giro en radianes) · fog: niebla
 export const KEYFRAMES = [
   { x: 0, y: 0.05, scale: 1,    rotX: 0.12,  rotY: -0.5, rotZ: 0.05, open: 0, flip: 0, cam: 6.2, bx: 0, ring: 0, ringY: 0,    rr: -3,   fog: 0 },
-  { x: 0, y: -0.2, scale: 1,    rotX: -0.5,  rotY: 0,    rotZ: 0,    open: 1, flip: 0, cam: 6.2, bx: 0, ring: 0, ringY: 0,    rr: -3,   fog: 0 },
-  { x: 0, y: -0.3, scale: 0.92, rotX: -0.55, rotY: 0.15, rotZ: 0,    open: 1, flip: 1, cam: 6.2, bx: 1, ring: 0, ringY: 0,    rr: -3,   fog: 0 },
+  { x: 0, y: 0.0,  scale: 0.9,  rotX: -0.5,  rotY: 0,    rotZ: 0,    open: 1, flip: 0, cam: 6.2, bx: 0, ring: 0, ringY: 0,    rr: -3,   fog: 0 },
+  { x: 0, y: -0.02, scale: 0.82, rotX: -0.55, rotY: 0.15, rotZ: 0,    open: 1, flip: 1, cam: 6.2, bx: 1, ring: 0, ringY: 0,    rr: -3,   fog: 0 },
   { x: 0, y: 4.2,  scale: 0.5,  rotX: -0.4,  rotY: 1.2,  rotZ: 0.3,  open: 1, flip: 1, cam: 6.2, bx: 0, ring: 1, ringY: 0,    rr: 0,    fog: 0 },
   { x: 0, y: 6,    scale: 0.2,  rotX: -0.4,  rotY: 1.6,  rotZ: 0.3,  open: 1, flip: 1, cam: 6.2, bx: 0, ring: 1, ringY: -0.5, rr: 3.4,  fog: 1 },
   { x: 0, y: 6,    scale: 0.2,  rotX: -0.4,  rotY: 1.6,  rotZ: 0.3,  open: 1, flip: 1, cam: 6.2, bx: 0, ring: 1, ringY: -3,   rr: 5,    fog: 1 },
