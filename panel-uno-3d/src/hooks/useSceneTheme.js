@@ -17,8 +17,10 @@ export function useSceneTheme(enabled = true) {
     const P = PALETTES[theme], root = document.documentElement
     let cur = readTarget(), raf
     const car = document.querySelector('#carrusel .scene-inner')
-    const tick = () => {
-      cur += (readTarget() - cur) * 0.12
+    let last = performance.now()
+    const tick = (now) => {
+      const dt = Math.min(2, Math.max(0.001, (now - last) / 1000)); last = now
+      cur += (readTarget() - cur) * (1 - Math.exp(-8 * dt))
       const i = Math.min(P.bg.length - 2, Math.max(0, Math.floor(cur))), t = Math.min(1, Math.max(0, cur - i))
       root.style.setProperty('--bg', mix(rgb(P.bg[i]), rgb(P.bg[i + 1]), t))
       root.style.setProperty('--fg', mix(rgb(P.fg[i]), rgb(P.fg[i + 1]), t))
